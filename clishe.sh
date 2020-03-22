@@ -1,15 +1,24 @@
 # SPDX-License-Identifier: MIT
 #
 # File:    clishe.sh
-# Author:  Jiří Kučera, <sanczes@gmail.com>
+# Author:  Jiří Kučera, <sanczes AT gmail.com>
 # Date:    2020-03-10 07:24:00 +0100
 # Project: A CLI Shell Library (clishe)
-# Version: 0.00
 # Brief:   A command line interface (a.k.a CLI) shell library.
 #
 
 : <<'=cut'
 =pod
+
+=encoding utf8
+
+=begin html
+
+<div class="header">
+  clishe
+</div>
+
+=end html
 
 =head1 NAME
 
@@ -21,43 +30,81 @@ Provides a set of function for creating command line interface scripts in
 Bourne Again Shell (bash) easily.
 
 See L<samples directory|https://github.com/i386x/clishe/tree/master/samples> or
-L</EXAMPLES> section below for examples.
+L<EXAMPLES|/EXAMPLES> section below for examples.
 
 =head1 INSTALLATION
 
-TODO
+Before the intallation, ensure you have
+
+=over
+
+=item pod2man, pod2html
+
+to build a documentation
+
+=item shellcheck, podchecker
+
+to make a checks before building
+
+=back
+
+installed. To get a I<shellcheck>, visit its
+L<homepage|https://github.com/koalaman/shellcheck>.
+
+Next, get the archive and unpack it or, if you want the most recent snapshot,
+clone the I<clishe> repository:
+
+  $ git clone --recurse-submodules https://github.com/i386x/clishe.git
+
+Inside the I<clishe> top directory, type:
+
+  $ make && make install
+
+This will install I<clishe> and all its documentation to the standard system
+location. To change the location, use C<PREFIX>:
+
+  $ PREFIX=/usr/local make install
+
+This will install I<clishe> under C</usr/local>.
 
 =head1 USAGE
 
-TODO
+To use I<clishe>, simply insert the following line to your script:
+
+  . /usr/share/clishe/clishe.sh
+
+Do not forget also to initialize I<clishe> before using anything from it:
+
+  clishe_init
 
 =head1 ENVIRONMENT VARIABLES
 
-C<CLISHE_COLOR> - set a color of text printed by L</clishe_echo>. See
-L</clishe_echo> for more details.
+C<CLISHE_COLOR> - set a color of text printed by L<clishe_echo|/clishe_echo>.
+See L<clishe_echo|/clishe_echo> for more details.
 
-C<CLISHE_NOCOLOR> - if non-empty, suppress colored output of L</clishe_echo>.
-See L</clishe_echo> for more details.
+C<CLISHE_NOCOLOR> - if non-empty, suppress colored output of
+L<clishe_echo|/clishe_echo>. See L<clishe_echo|/clishe_echo> for more details.
 
-C<CLISHE_QUITE> - if non-empty, suppress L</clishe_echo>'s output. See
-L</clishe_echo> for more details.
+C<CLISHE_QUITE> - if non-empty, suppress L<clishe_echo|/clishe_echo>'s output.
+See L<clishe_echo|/clishe_echo> for more details.
 
 C<CLISHE_HELP_INDENT1> - spaces before option name in help screen. See
-L</clishe_defopt>.
+L<clishe_defopt|/clishe_defopt>.
 
 C<CLISHE_HELP_INDENT2> - spaces before paragraph with option description. See
-L</clishe_defopt>.
+L<clishe_defopt|/clishe_defopt>.
 
 =head1 VARIABLES
 
-C<clishe_scriptname> - a base name of the script. See L</clishe_defopt> for
-example of use.
+C<clishe_scriptname> - a base name of the script. See
+L<clishe_defopt|/clishe_defopt> for example of use.
 
 C<clishe_helplines> - holds the description of defined script options. See
-L</clishe_defopt>.
+L<clishe_defopt|/clishe_defopt>.
 
-C<clishe_nopts> - a number of options processed by L</clishe_process_options>.
-See L</clishe_process_options>.
+C<clishe_nopts> - a number of options processed by
+L<clishe_process_options|/clishe_process_options>. See
+L<clishe_process_options|/clishe_process_options>.
 
 =head1 FUNCTIONS
 
@@ -79,7 +126,8 @@ other function from I<clishe> library is invoked.
 =cut
 
 function clishe_init() {
-  declare -g clishe_scriptname="$(basename "$0")"
+  declare -g clishe_scriptname
+  clishe_scriptname="$(basename "$0")"
   declare -Ag __clishe_map_flagopt2storage
   declare -Ag __clishe_map_kvopt2storage
   declare -Ag __clishe_map_help2action
@@ -122,7 +170,7 @@ Assign I<VALUE> to I<VARIABLE>.
 =cut
 
 function clishe_setvar() {
-  declare -g $1="$2"
+  declare -g "$1"="$2"
 }
 
 : <<'=cut'
@@ -141,7 +189,7 @@ Usage:
 
 =over
 
-=item -I<X>
+=item -X
 
 Option of the form -I<X> is passed directly to C<echo>, i.e.
 
@@ -263,6 +311,7 @@ function clishe_echo() {
   fi
 
   if [[ -z "${CLISHE_QUITE:-}" ]]; then
+    # shellcheck disable=SC2086
     echo ${__echo_flags} "${__echo_color}$*${__echo_reset}"
   fi
 }
@@ -272,12 +321,12 @@ function clishe_echo() {
 
 =head3 clishe_error
 
-Print I<MSG1> I<MSG2> I<...> to the standard error output in red and exit with
-exit code I<N> (if I<N> is not specified, exit with 1).
+Print I<EMSG1 EMSG2 ...> to the standard error output in red and exit with exit
+code I<N> (if I<N> is not specified, exit with 1).
 
 Usage:
 
-  clishe_error [N] [MSG1 [MSG2 [...]]]
+  clishe_error [N] [EMSG1 [EMSG2 [...]]]
 
 =over
 
@@ -285,9 +334,9 @@ Usage:
 
 Exit code. Must be a positive integer. Default exit code is 1.
 
-=item MSG1 MSG2 ...
+=item EMSG1 EMSG2 ...
 
-Messages to be printed to the standard error output.
+Error messages to be printed to the standard error output.
 
 =back
 
@@ -303,8 +352,8 @@ prints C<Foo: error> to the standard error output and exit with 1 whereas
 
 prints the same but exit with 2.
 
-As I<clishe_error> uses L</clishe_echo>, its output can be influenced by
-B<CLISHE_NOCOLOR> and B<CLISHE_QUITE> environment variables.
+As I<clishe_error> uses L<clishe_echo|/clishe_echo>, its output can be
+influenced by B<CLISHE_NOCOLOR> and B<CLISHE_QUITE> environment variables.
 
 =cut
 
@@ -316,6 +365,7 @@ function clishe_error() {
     shift
   fi
   clishe_echo --red "${clishe_scriptname}: $*" >&2
+  # shellcheck disable=SC2086
   exit ${__exitcode}
 }
 
@@ -364,7 +414,7 @@ in user defined help printing routines. Environment variables
 C<CLISHE_HELP_INDENT1> and C<CLISHE_HELP_INDENT2> influence the indentation of
 help text. Given an excerpt of help screen
 
-  Usage: ./script.sh [OPTIONS]
+  Usage: script.sh [OPTIONS]
   where OPTIONS are
 
     --help, -h, -?
@@ -442,7 +492,7 @@ excerpt from a script C<script.sh>:
 
 If we run
 
-  ./script.sh -tfa1afe1 -port=7777 -vvv
+  $ ./script.sh -tfa1afe1 -port=7777 -vvv
 
 then the value of C<TOKEN> will be C<fa1afe1>, the value of C<PORT> will be
 7777, the value of C<EMAIL> will be its default value which is the empty
@@ -451,7 +501,7 @@ option on command line.
 
 If we just run
 
-  ./script.sh -v
+  $ ./script.sh -v
 
 we get an error about missing --I<token> option, because this option is marked
 as required.
@@ -459,7 +509,7 @@ as required.
 Printing the help screen is done via C<usage> function. Notice that instead of
 --I<help>, options -I<h> and -I<?> can be also used to show the help:
 
-  ./script.sh -?
+  $ ./script.sh -?
   Usage: script.sh [OPTIONS]
   where OPTIONS are
 
@@ -533,12 +583,12 @@ function clishe_defopt() {
   if [[ -z "${1:-}" ]]; then
     # "" indicates that help is on standard input:
     __help=$(
-      while read; do
+      while read -r; do
         echo "${REPLY:+${CLISHE_HELP_INDENT2:-${__clishe_indent2}}}${REPLY}"
       done
     )
   else
-    __help=$(echo "${CLISHE_HELP_INDENT2:-${__clishe_indent2}}${1}")
+    __help="${CLISHE_HELP_INDENT2:-${__clishe_indent2}}${1}"
   fi
 
   shift
@@ -669,11 +719,11 @@ terminated.
 
 Given an excerpt from C<script.sh>
 
-  clishe_process_options "@"
+  clishe_process_options "$@"
 
 after running C<script.sh> as
 
-  ./script.sh --foo=bar -x -- a b c
+  $ ./script.sh --foo=bar -x -- a b c
 
 options C<--foo=bar> and C<-x> will be processed. When C<--> will be reached,
 it will be consumed and the processing of options will be terminated. The value
@@ -690,7 +740,7 @@ function clishe_process_options() {
     __clishe_nshift=1
     case "${1}" in
       --)
-        clishe_nopts=$(( ${clishe_nopts} + 1 ))
+        clishe_nopts=$(( clishe_nopts + 1 ))
         shift
         break
         ;;
@@ -707,11 +757,11 @@ function clishe_process_options() {
         clishe_error "Invalid option: ${1}"
         ;;
     esac
-    clishe_nopts=$(( ${clishe_nopts} + ${__clishe_nshift} ))
+    clishe_nopts=$(( clishe_nopts + __clishe_nshift ))
     shift ${__clishe_nshift}
   done
 
-  for __varname in ${__clishe_list_required[@]}; do
+  for __varname in "${__clishe_list_required[@]}"; do
     if [[ -z "${!__varname:-}" ]]; then
       clishe_error \
         "Option --${__clishe_map_storage2longopt[${__varname}]:-} is required."
@@ -817,7 +867,55 @@ function __clishe_handle_longopt() {
 
 =head1 EXAMPLES
 
-TODO
+The following Bash script print information about its argumetns:
+
+  #!/bin/bash
+
+  set -euo pipefail
+
+  . /usr/share/clishe/clishe.sh >/dev/null 2>&1 || {
+    echo "clishe library is not installed"
+    exit 1
+  }
+
+  clishe_init
+
+  clishe_defopt --token=TOKEN -t -- "security token" required
+  clishe_defopt --user=USER -u -- "" optional "Jane Doe <jd@compant.com>" <<EOF
+  a user name and email; please, keep the following format
+
+    Name Surname <your@email.address>
+
+  the email part is optional
+  EOF
+  clishe_defopt --prefix=PREFIX -- "prefix" optional
+  clishe_defopt --verbose -v -- "verbocity level" V
+  clishe_defopt --help -h -? -- "print this screen and exit" help usage
+
+  function usage() {
+    cat <<-EOF
+  	Show options (a clishe demo).
+
+  	Usage: ${clishe_scriptname} OPTIONS
+  	where OPTIONS are
+
+  	${clishe_helplines}
+
+  	The key-value options with no default value are required.
+
+  	EOF
+    exit 0
+  }
+
+  clishe_process_options "$@"
+  shift ${clishe_nopts}
+
+  clishe_echo --blue "TOKEN: '${TOKEN:-}'"
+  clishe_echo --blue "USER: '${USER:-}'"
+  clishe_echo --blue "PREFIX: '${PREFIX:-}'"
+  clishe_echo --blue "V: ${V:-0}"
+  clishe_echo --blue "Processed options: ${clishe_nopts}"
+  clishe_echo --blue "Rest of options: $*"
 
 =head1 AUTHORS
 
@@ -831,14 +929,35 @@ Jiří Kučera, I<sanczes@gmail.com>
 
 =head1 VERSION
 
-0.00
+=over
+
+=item *
+
+@VERSION@
+
+=back
 
 =head1 LICENSE
 
+=over
+
+=item *
+
 MIT
+
+=back
 
 =head1 BUG REPORTS
 
-TODO
+If you found a bug, please
+L<open an issue|https://github.com/i386x/clishe/issues>.
+
+=begin html
+
+<div class="footer">
+  &copy; 2020 Jiří Kučera | v@VERSION@
+</div>
+
+=end html
 
 =cut

@@ -1,0 +1,3 @@
+[submodule "docs/html/pod2html.css"]
+	path = docs/html/pod2html.css
+	url = https://github.com/i386x/pod2html.css.git

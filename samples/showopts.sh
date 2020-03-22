@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: MIT
 #
 # File:    samples/showopts.sh
-# Author:  Jiří Kučera, <sanczes@gmail.com>
+# Author:  Jiří Kučera, <sanczes AT gmail.com>
 # Date:    2020-03-17 16:31:00 +0100
 # Project: A CLI Shell Library (clishe)
-# Version: 0.00
 # Brief:   Show options (a clishe demo).
 #
 
@@ -13,6 +12,8 @@ set -euo pipefail
 
 SCRIPTDIR="$(readlink -f "$(dirname "$0")")"
 
+# shellcheck source=../clishe.sh
+. /usr/share/clishe/clishe.sh >/dev/null 2>&1 || \
 . "${SCRIPTDIR}/../clishe.sh" >/dev/null 2>&1 || {
   echo "clishe library is not installed"
   exit 1
