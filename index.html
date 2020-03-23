@@ -1,0 +1,559 @@
+<?xml version="1.0" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>clishe - A CLI Shell Library</title>
+<link rel="stylesheet" href="static/css/pod2html.css" type="text/css" />
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rev="made" href="mailto:root@localhost" />
+</head>
+
+<body>
+
+
+
+<ul id="index">
+  <li><a href="#NAME">NAME</a></li>
+  <li><a href="#DESCRIPTION">DESCRIPTION</a></li>
+  <li><a href="#INSTALLATION">INSTALLATION</a></li>
+  <li><a href="#USAGE">USAGE</a></li>
+  <li><a href="#ENVIRONMENT-VARIABLES">ENVIRONMENT VARIABLES</a></li>
+  <li><a href="#VARIABLES">VARIABLES</a></li>
+  <li><a href="#FUNCTIONS">FUNCTIONS</a>
+    <ul>
+      <li><a href="#Initialization">Initialization</a>
+        <ul>
+          <li><a href="#clishe_init">clishe_init</a></li>
+        </ul>
+      </li>
+      <li><a href="#Auxiliary-functions">Auxiliary functions</a>
+        <ul>
+          <li><a href="#clishe_setvar">clishe_setvar</a></li>
+        </ul>
+      </li>
+      <li><a href="#Reporting">Reporting</a>
+        <ul>
+          <li><a href="#clishe_echo">clishe_echo</a></li>
+          <li><a href="#clishe_error">clishe_error</a></li>
+        </ul>
+      </li>
+      <li><a href="#Options">Options</a>
+        <ul>
+          <li><a href="#clishe_defopt">clishe_defopt</a></li>
+          <li><a href="#clishe_process_options">clishe_process_options</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><a href="#EXAMPLES">EXAMPLES</a></li>
+  <li><a href="#AUTHORS">AUTHORS</a></li>
+  <li><a href="#VERSION">VERSION</a></li>
+  <li><a href="#LICENSE">LICENSE</a></li>
+  <li><a href="#BUG-REPORTS">BUG REPORTS</a></li>
+</ul>
+
+<div class="header">
+  clishe
+</div>
+
+<h1 id="NAME">NAME</h1>
+
+<p>clishe - A CLI Shell Library</p>
+
+<h1 id="DESCRIPTION">DESCRIPTION</h1>
+
+<p>Provides a set of function for creating command line interface scripts in Bourne Again Shell (bash) easily.</p>
+
+<p>See <a href="https://github.com/i386x/clishe/tree/master/samples">samples directory</a> or <a href="#EXAMPLES">EXAMPLES</a> section below for examples.</p>
+
+<h1 id="INSTALLATION">INSTALLATION</h1>
+
+<p>Before building and installing <i>clishe</i>, make sure you have installed <a href="https://perldoc.perl.org/pod2man.html">pod2man</a>, <a href="https://perldoc.perl.org/pod2html.html">pod2html</a>, <a href="https://perldoc.perl.org/podchecker.html">podchecker</a> and <a href="https://github.com/koalaman/shellcheck">shellcheck</a> on your system.</p>
+
+<p>Next, get the <a href="https://github.com/i386x/clishe/releases">tarball</a> and unpack it or, if you want the most recent snapshot, clone the <i>clishe</i> repository:</p>
+
+<pre><code>  $ git clone --recurse-submodules https://github.com/i386x/clishe.git</code></pre>
+
+<p>Inside the <i>clishe</i> top directory, type:</p>
+
+<pre><code>  $ make &amp;&amp; make install</code></pre>
+
+<p>This will install <i>clishe</i> and all its documentation under the <code>/usr/local</code> location. To change the install destination, use <code>PREFIX</code>:</p>
+
+<pre><code>  $ PREFIX=/usr make install</code></pre>
+
+<p>This will install <i>clishe</i> under the <code>/usr</code> location.</p>
+
+<h1 id="USAGE">USAGE</h1>
+
+<p>To use <i>clishe</i>, simply insert the following line to your script:</p>
+
+<pre><code>  . /usr/local/share/clishe/clishe.sh</code></pre>
+
+<p>You can also use a more robust way:</p>
+
+<pre><code>  SCRIPTDIR=&quot;$(readlink -f &quot;$(dirname &quot;$0&quot;)&quot;)&quot;
+  CLISHEPATH=&quot;${SCRIPTDIR}:/usr/local/share/clishe:/usr/share/clishe&quot;
+
+  PATH=&quot;${CLISHEPATH}${PATH:+:}${PATH}&quot; \
+  . clishe.sh &gt;/dev/null 2&gt;&amp;1 || {
+    echo &quot;clishe library is not installed&quot;
+    exit 1
+  }</code></pre>
+
+<p>This will prefer bundled <code>clishe.sh</code> with your script over <code>clishe.sh</code> from <code>/usr/local/share/clishe</code> and <code>clishe.sh</code> from <code>/usr/local/share/clishe</code> over <code>clishe.sh</code> from <code>/usr/share/clishe</code>.</p>
+
+<p>Do not forget also to initialize <i>clishe</i> before using anything from it:</p>
+
+<pre><code>  clishe_init</code></pre>
+
+<h1 id="ENVIRONMENT-VARIABLES">ENVIRONMENT VARIABLES</h1>
+
+<p><code>CLISHE_COLOR</code> - set a color of text printed by <a href="#clishe_echo">clishe_echo</a>. See <a href="#clishe_echo">clishe_echo</a> for more details.</p>
+
+<p><code>CLISHE_NOCOLOR</code> - if non-empty, suppress colored output of <a href="#clishe_echo">clishe_echo</a>. See <a href="#clishe_echo">clishe_echo</a> for more details.</p>
+
+<p><code>CLISHE_QUITE</code> - if non-empty, suppress <a href="#clishe_echo">clishe_echo</a>&#39;s output. See <a href="#clishe_echo">clishe_echo</a> for more details.</p>
+
+<p><code>CLISHE_HELP_INDENT1</code> - spaces before option name in help screen. See <a href="#clishe_defopt">clishe_defopt</a>.</p>
+
+<p><code>CLISHE_HELP_INDENT2</code> - spaces before paragraph with option description. See <a href="#clishe_defopt">clishe_defopt</a>.</p>
+
+<h1 id="VARIABLES">VARIABLES</h1>
+
+<p><code>clishe_scriptname</code> - a base name of the script. See <a href="#clishe_defopt">clishe_defopt</a> for example of use.</p>
+
+<p><code>clishe_helplines</code> - holds the description of defined script options. See <a href="#clishe_defopt">clishe_defopt</a>.</p>
+
+<p><code>clishe_nopts</code> - a number of options processed by <a href="#clishe_process_options">clishe_process_options</a>. See <a href="#clishe_process_options">clishe_process_options</a>.</p>
+
+<h1 id="FUNCTIONS">FUNCTIONS</h1>
+
+<h2 id="Initialization">Initialization</h2>
+
+<h3 id="clishe_init">clishe_init</h3>
+
+<p>Initialize <i>clishe</i> shell library. This function should be invoked before any other function from <i>clishe</i> library is invoked.</p>
+
+<h2 id="Auxiliary-functions">Auxiliary functions</h2>
+
+<h3 id="clishe_setvar">clishe_setvar</h3>
+
+<p>Globally set the value of a variable.</p>
+
+<p>Usage:</p>
+
+<pre><code>  clishe_setvar VARIABLE VALUE</code></pre>
+
+<dl>
+
+<dt id="VARIABLE">VARIABLE</dt>
+<dd>
+
+<p>A variable name.</p>
+
+</dd>
+<dt id="VALUE">VALUE</dt>
+<dd>
+
+<p>A value to be assigned to <i>VARIABLE</i>.</p>
+
+</dd>
+</dl>
+
+<p>Assign <i>VALUE</i> to <i>VARIABLE</i>.</p>
+
+<h2 id="Reporting">Reporting</h2>
+
+<h3 id="clishe_echo">clishe_echo</h3>
+
+<p>Print a text given in parameters to the standard output.</p>
+
+<p>Usage:</p>
+
+<pre><code>  clishe_echo [-X|--red|--green|--blue|--yellow|--color COLOR_CODE] \
+              [MSG1 [MSG2 [...]]]</code></pre>
+
+<dl>
+
+<dt id="X">-X</dt>
+<dd>
+
+<p>Option of the form -<i>X</i> is passed directly to <code>echo</code>, i.e.</p>
+
+<pre><code>  clishe_echo -n &quot;foo&quot;</code></pre>
+
+<p>is the same as</p>
+
+<pre><code>  echo -n &quot;foo&quot;</code></pre>
+
+</dd>
+<dt id="red">--red</dt>
+<dd>
+
+<p>Print text in red color.</p>
+
+</dd>
+<dt id="green">--green</dt>
+<dd>
+
+<p>Print text in green color.</p>
+
+</dd>
+<dt id="blue">--blue</dt>
+<dd>
+
+<p>Print text in blue color.</p>
+
+</dd>
+<dt id="yellow">--yellow</dt>
+<dd>
+
+<p>Print text in yellow color.</p>
+
+</dd>
+<dt id="color-COLOR_CODE">--color COLOR_CODE</dt>
+<dd>
+
+<p>Print text in <i>COLOR_CODE</i> color. The <i>COLOR_CODE</i> must be written in a way so</p>
+
+<pre><code>  \e[${COLOR_CODE}m</code></pre>
+
+<p>is a valid ANSI escape color code. For example</p>
+
+<pre><code>  clishe_echo --color &#39;33;1&#39; &quot;foo&quot;</code></pre>
+
+<p>prints <code>foo</code> in yellow to the terminal window.</p>
+
+</dd>
+<dt id="MSG1-MSG2">MSG1 MSG2 ...</dt>
+<dd>
+
+<p>Messages to be printed. When printed, a space character is put between two messages.</p>
+
+</dd>
+</dl>
+
+<p>To set a color, environment variable <b>CLISHE_COLOR</b> can be set to the value of the same format as in the case of <i>COLOR_CODE</i>. Therefore,</p>
+
+<pre><code>  CLISHE_COLOR=&#39;33;1&#39; clishe_echo &quot;foo&quot;</code></pre>
+
+<p>prints <code>foo</code> in yellow. The value of <b>CLISHE_COLOR</b> can be overriden by command line arguments, so</p>
+
+<pre><code>  CLISHE_COLOR=&#39;33;1&#39; clishe_echo --red &quot;foo&quot;</code></pre>
+
+<p>prints <code>foo</code> in red instead of yellow. If <b>CLISHE_NOCOLOR</b> has non-empty value, it suppresses color output entirely, no matter whether the color is set via <b>CLISHE_COLOR</b> or via command line. Thus,</p>
+
+<pre><code>  CLISHE_NOCOLOR=1 CLISHE_COLOR=&#39;33;1&#39; clishe_echo --red &quot;foo&quot;</code></pre>
+
+<p>prints <code>foo</code> in default terminal colors. If <b>CLISHE_QUITE</b> is set, no output is printed. For example</p>
+
+<pre><code>  CLISHE_QUITE=1 CLISHE_COLOR=&#39;33;1&#39; clishe_echo --red &quot;foo&quot;</code></pre>
+
+<p>prints nothing to standard output.</p>
+
+<h3 id="clishe_error">clishe_error</h3>
+
+<p>Print <i>EMSG1 EMSG2 ...</i> to the standard error output in red and exit with exit code <i>N</i> (if <i>N</i> is not specified, exit with 1).</p>
+
+<p>Usage:</p>
+
+<pre><code>  clishe_error [N] [EMSG1 [EMSG2 [...]]]</code></pre>
+
+<dl>
+
+<dt id="N">N</dt>
+<dd>
+
+<p>Exit code. Must be a positive integer. Default exit code is 1.</p>
+
+</dd>
+<dt id="EMSG1-EMSG2">EMSG1 EMSG2 ...</dt>
+<dd>
+
+<p>Error messages to be printed to the standard error output.</p>
+
+</dd>
+</dl>
+
+<p>If the first argument matches <code>^[1-9][0-9]*$</code> (that is, if the first argument is a positive integer), it is treated as exit code instead of message text. Therefore</p>
+
+<pre><code>  clishe_error &quot;Foo:&quot; &quot;error&quot;</code></pre>
+
+<p>prints <code>Foo: error</code> to the standard error output and exit with 1 whereas</p>
+
+<pre><code>  clishe_error 2 &quot;Foo:&quot; &quot;error&quot;</code></pre>
+
+<p>prints the same but exit with 2.</p>
+
+<p>As <i>clishe_error</i> uses <a href="#clishe_echo">clishe_echo</a>, its output can be influenced by <b>CLISHE_NOCOLOR</b> and <b>CLISHE_QUITE</b> environment variables.</p>
+
+<h2 id="Options">Options</h2>
+
+<h3 id="clishe_defopt">clishe_defopt</h3>
+
+<p>Define a command line option.</p>
+
+<p>Usage:</p>
+
+<pre><code>  clishe_defopt --key=STORAGE [-a [-b [...]]] -- HELP \
+                ( required | optional [DEFAULT] )
+  clishe_defopt --flag [-a [-b [...]]] -- HELP ( STORAGE | help ACTION )</code></pre>
+
+<dl>
+
+<dt id="key-STORAGE">--key=STORAGE</dt>
+<dd>
+
+<p>This form of the first argument specify that the defined option is key-value option. <i>key</i> is the name of the option, <i>STORAGE</i> is the name of the variable to which a value of --<i>key</i> given on command line should be stored.</p>
+
+</dd>
+<dt id="flag">--flag</dt>
+<dd>
+
+<p>This form of the first argument specify that the defined option is flag option named <i>flag</i>.</p>
+
+</dd>
+<dt id="a--b">-a -b ...</dt>
+<dd>
+
+<p>A list of short options which works as an aliases/shortcuts for the long one. The list is terminated with <code>--</code>.</p>
+
+</dd>
+<dt id="HELP">HELP</dt>
+<dd>
+
+<p>A help text to be displayed as the description of the defined option. If this option is empty (<code>&quot;&quot;</code>), the help text is read from the standard input. If the option is optional key-value option, the information about its default value is appended to the help text.</p>
+
+<p>The help text is accumulated in <code>clishe_helplines</code> variable that can be used in user defined help printing routines. Environment variables <code>CLISHE_HELP_INDENT1</code> and <code>CLISHE_HELP_INDENT2</code> influence the indentation of help text. Given an excerpt of help screen</p>
+
+<pre><code>  Usage: script.sh [OPTIONS]
+  where OPTIONS are
+
+    --help, -h, -?
+        print this screen and exit</code></pre>
+
+<p>the spaces that are before <code>--help, -h, -?</code> are taken from <code>CLISHE_HELP_INDENT1</code> whereas the spaces before <code>print this screen and exit</code> comes from <code>CLISHE_HELP_INDENT2</code>. If no <code>CLISHE_HELP_INDENT1</code> or <code>CLISHE_HELP_INDENT2</code> are provided, the default amount of spaces is 2 and 6, respectively. Because the help text is assembled dynamically during <code>clishe_defopt</code> invokation, it is recommended to set them before a first use <code>clishe_defopt</code>.</p>
+
+</dd>
+<dt id="required">required</dt>
+<dd>
+
+<p>The keyword <code>required</code> is applicable to key-value options only. It says that the key-value option must be present on the command line and its value must be non-empty.</p>
+
+</dd>
+<dt id="optional">optional</dt>
+<dd>
+
+<p>The keyword <code>optional</code> is applicable to key-value options only and it says that the key-value option is optional.</p>
+
+</dd>
+<dt id="DEFAULT">DEFAULT</dt>
+<dd>
+
+<p>A default value of the key-value option if it was declared as optional. The default value should be specified only in connection with <code>optional</code> keyword. If no default value is specified, the default value of key-value option is the empty string.</p>
+
+</dd>
+<dt id="STORAGE">STORAGE</dt>
+<dd>
+
+<p>A name of a variable to which the presence of flag option should be recorded. The storage variable holds the number of occurences of flag option on command line. If the corresponding flag option was not encountered during the command line processing, the storage variable remains unset. Thus, to test whether the flag option has been set, use</p>
+
+<pre><code>  [[ ${STORAGE_VARIABLE:-0} -gt 0 ]]</code></pre>
+
+</dd>
+<dt id="help">help</dt>
+<dd>
+
+<p>The keyword <code>help</code> indicates that the flag option fires a function that print a help screen.</p>
+
+</dd>
+<dt id="ACTION">ACTION</dt>
+<dd>
+
+<p>Applicable only with <code>help</code>, the <i>ACTION</i> is the name of function that is responsible for printing of help screen.</p>
+
+</dd>
+</dl>
+
+<p>Following examples demonstrate how to define command line options. Consider an excerpt from a script <code>script.sh</code>:</p>
+
+<pre><code>  clishe_defopt --token=TOKEN -t -- &quot;a security token&quot; required
+  clishe_defopt --port=PORT -p -- &quot;port number&quot; optional 8888
+  clishe_defopt --email=EMAIL -- &quot;email address&quot; optional
+  clishe_defopt --verbose -v -- &quot;verbosity level&quot; V
+  clishe_defopt --help -h -? -- &quot;&quot; help usage &lt;&lt;__HELP__
+  print this screen and exit
+  __HELP__
+
+  function usage() {
+    cat &lt;&lt;EOF
+  Usage: ${clishe_scriptname} [OPTIONS]
+  where OPTIONS are
+
+  ${clishe_helplines}
+
+  EOF
+    exit 0
+  }</code></pre>
+
+<p>If we run</p>
+
+<pre><code>  $ ./script.sh -tfa1afe1 -port=7777 -vvv</code></pre>
+
+<p>then the value of <code>TOKEN</code> will be <code>fa1afe1</code>, the value of <code>PORT</code> will be 7777, the value of <code>EMAIL</code> will be its default value which is the empty string, and the value of <code>V</code> will be 3 because there are 3 occurences of <i>v</i> option on command line.</p>
+
+<p>If we just run</p>
+
+<pre><code>  $ ./script.sh -v</code></pre>
+
+<p>we get an error about missing --<i>token</i> option, because this option is marked as required.</p>
+
+<p>Printing the help screen is done via <code>usage</code> function. Notice that instead of --<i>help</i>, options -<i>h</i> and -<i>?</i> can be also used to show the help:</p>
+
+<pre><code>  $ ./script.sh -?
+  Usage: script.sh [OPTIONS]
+  where OPTIONS are
+
+    --token=TOKEN, -t
+        a security token
+
+    --port=PORT, -p
+        port number
+        (default: &quot;8888&quot;)
+
+    --email=EMAIL
+        email address
+        (default: &quot;&quot;)
+
+    --verbose, -v
+        verbosity level
+
+    --help, -h, -?
+        print this screen and exit</code></pre>
+
+<h3 id="clishe_process_options">clishe_process_options</h3>
+
+<p>Process command line options and store the number of processed options to <code>clishe_nopts</code>.</p>
+
+<p>Usage:</p>
+
+<pre><code>  clishe_process_options [OPT1 [OPT2 [...]]]</code></pre>
+
+<dl>
+
+<dt id="OPT1-OPT2">OPT1 OPT2 ...</dt>
+<dd>
+
+<p>Options to be processed. If one of the options is <code>--</code>, the processing is terminated.</p>
+
+</dd>
+</dl>
+
+<p>Given an excerpt from <code>script.sh</code></p>
+
+<pre><code>  clishe_process_options &quot;$@&quot;</code></pre>
+
+<p>after running <code>script.sh</code> as</p>
+
+<pre><code>  $ ./script.sh --foo=bar -x -- a b c</code></pre>
+
+<p>options <code>--foo=bar</code> and <code>-x</code> will be processed. When <code>--</code> will be reached, it will be consumed and the processing of options will be terminated. The value of <code>clishe_nopts</code> variable becomes 3. The value of <code>clishe_nopts</code> can be used for shifting command line options to get the access to the yet unprocessed part of command line.</p>
+
+<h1 id="EXAMPLES">EXAMPLES</h1>
+
+<p>The following Bash script print information about its argumetns:</p>
+
+<pre><code>  #!/bin/bash
+
+  set -euo pipefail
+
+  SCRIPTDIR=&quot;$(readlink -f &quot;$(dirname &quot;$0&quot;)&quot;)&quot;
+  CLISHEPATH=&quot;${SCRIPTDIR}:/usr/local/share/clishe:/usr/share/clishe&quot;
+
+  PATH=&quot;${CLISHEPATH}${PATH:+:}${PATH}&quot; \
+  . clishe.sh &gt;/dev/null 2&gt;&amp;1 || {
+    echo &quot;clishe library is not installed&quot;
+    exit 1
+  }
+
+  clishe_init
+
+  clishe_defopt --token=TOKEN -t -- &quot;security token&quot; required
+  clishe_defopt --user=USER -u -- &quot;&quot; optional &quot;Jane Doe &lt;jd@compant.com&gt;&quot; &lt;&lt;EOF
+  a user name and email; please, keep the following format
+
+    Name Surname &lt;your@email.address&gt;
+
+  the email part is optional
+  EOF
+  clishe_defopt --prefix=PREFIX -- &quot;prefix&quot; optional
+  clishe_defopt --verbose -v -- &quot;verbocity level&quot; V
+  clishe_defopt --help -h -? -- &quot;print this screen and exit&quot; help usage
+
+  function usage() {
+    cat &lt;&lt;-EOF
+        Show options (a clishe demo).
+
+        Usage: ${clishe_scriptname} OPTIONS
+        where OPTIONS are
+
+        ${clishe_helplines}
+
+        The key-value options with no default value are required.
+
+        EOF
+    exit 0
+  }
+
+  clishe_process_options &quot;$@&quot;
+  shift ${clishe_nopts}
+
+  clishe_echo --blue &quot;TOKEN: &#39;${TOKEN:-}&#39;&quot;
+  clishe_echo --blue &quot;USER: &#39;${USER:-}&#39;&quot;
+  clishe_echo --blue &quot;PREFIX: &#39;${PREFIX:-}&#39;&quot;
+  clishe_echo --blue &quot;V: ${V:-0}&quot;
+  clishe_echo --blue &quot;Processed options: ${clishe_nopts}&quot;
+  clishe_echo --blue &quot;Rest of options: $*&quot;</code></pre>
+
+<h1 id="AUTHORS">AUTHORS</h1>
+
+<ul>
+
+<li><p>Ji&#x159;&iacute; Ku&#x10D;era, <i>sanczes@gmail.com</i></p>
+
+</li>
+</ul>
+
+<h1 id="VERSION">VERSION</h1>
+
+<ul>
+
+<li><p>0.01</p>
+
+</li>
+</ul>
+
+<h1 id="LICENSE">LICENSE</h1>
+
+<ul>
+
+<li><p>MIT</p>
+
+</li>
+</ul>
+
+<h1 id="BUG-REPORTS">BUG REPORTS</h1>
+
+<p>If you found a bug, please <a href="https://github.com/i386x/clishe/issues">open an issue</a>.</p>
+
+<div class="footer">
+  &copy; 2020 Jiří Kučera | v0.01
+</div>
+
+
+</body>
+
+</html>
+
+
