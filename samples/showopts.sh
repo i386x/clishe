@@ -11,10 +11,11 @@
 set -euo pipefail
 
 SCRIPTDIR="$(readlink -f "$(dirname "$0")")"
+CLISHEPATH="${SCRIPTDIR}/..:/usr/local/share/clishe:/usr/share/clishe"
 
 # shellcheck source=../clishe.sh
-. /usr/share/clishe/clishe.sh >/dev/null 2>&1 || \
-. "${SCRIPTDIR}/../clishe.sh" >/dev/null 2>&1 || {
+PATH="${CLISHEPATH}${PATH:+:}${PATH}" \
+. clishe.sh >/dev/null 2>&1 || {
   echo "clishe library is not installed"
   exit 1
 }

@@ -9,8 +9,8 @@
 
 ME := $(lastword $(MAKEFILE_LIST))
 HERE := $(dir $(abspath $(ME)))
-TOPDIR := $(HERE)/../../..
-PODDIR := $(HERE)/../../pod
+TOPDIR := $(HERE)../../..
+PODDIR := $(HERE)../../pod
 
 include $(TOPDIR)/common.mk
 
@@ -31,7 +31,7 @@ MANDEST := $(MANDIR)/man$(MANSEC)
 
 docs: $(MANPAGES)
 
-install: $(MANPAGES)
+install:
 	$(MKDIR) -p $(MANDEST)
 	$(INSTALL) -p -m 644 $(MANPAGES) $(MANDEST)
 

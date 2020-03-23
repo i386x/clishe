@@ -34,25 +34,14 @@ L<EXAMPLES|/EXAMPLES> section below for examples.
 
 =head1 INSTALLATION
 
-Before the intallation, ensure you have
+Before building and installing I<clishe>, make sure you have installed
+L<pod2man|https://perldoc.perl.org/pod2man.html>,
+L<pod2html|https://perldoc.perl.org/pod2html.html>,
+L<podchecker|https://perldoc.perl.org/podchecker.html> and
+L<shellcheck|https://github.com/koalaman/shellcheck> on your system.
 
-=over
-
-=item pod2man, pod2html
-
-to build a documentation
-
-=item shellcheck, podchecker
-
-to make a checks before building
-
-=back
-
-installed. To get a I<shellcheck>, visit its
-L<homepage|https://github.com/koalaman/shellcheck>.
-
-Next, get the archive and unpack it or, if you want the most recent snapshot,
-clone the I<clishe> repository:
+Next, get the L<tarball|https://github.com/i386x/clishe/releases> and unpack it
+or, if you want the most recent snapshot, clone the I<clishe> repository:
 
   $ git clone --recurse-submodules https://github.com/i386x/clishe.git
 
@@ -60,18 +49,33 @@ Inside the I<clishe> top directory, type:
 
   $ make && make install
 
-This will install I<clishe> and all its documentation to the standard system
-location. To change the location, use C<PREFIX>:
+This will install I<clishe> and all its documentation under the C</usr/local>
+location. To change the install destination, use C<PREFIX>:
 
-  $ PREFIX=/usr/local make install
+  $ PREFIX=/usr make install
 
-This will install I<clishe> under C</usr/local>.
+This will install I<clishe> under the C</usr> location.
 
 =head1 USAGE
 
 To use I<clishe>, simply insert the following line to your script:
 
-  . /usr/share/clishe/clishe.sh
+  . /usr/local/share/clishe/clishe.sh
+
+You can also use a more robust way:
+
+  SCRIPTDIR="$(readlink -f "$(dirname "$0")")"
+  CLISHEPATH="${SCRIPTDIR}:/usr/local/share/clishe:/usr/share/clishe"
+
+  PATH="${CLISHEPATH}${PATH:+:}${PATH}" \
+  . clishe.sh >/dev/null 2>&1 || {
+    echo "clishe library is not installed"
+    exit 1
+  }
+
+This will prefer bundled C<clishe.sh> with your script over C<clishe.sh> from
+C</usr/local/share/clishe> and C<clishe.sh> from C</usr/local/share/clishe>
+over C<clishe.sh> from C</usr/share/clishe>.
 
 Do not forget also to initialize I<clishe> before using anything from it:
 
@@ -873,7 +877,11 @@ The following Bash script print information about its argumetns:
 
   set -euo pipefail
 
-  . /usr/share/clishe/clishe.sh >/dev/null 2>&1 || {
+  SCRIPTDIR="$(readlink -f "$(dirname "$0")")"
+  CLISHEPATH="${SCRIPTDIR}:/usr/local/share/clishe:/usr/share/clishe"
+
+  PATH="${CLISHEPATH}${PATH:+:}${PATH}" \
+  . clishe.sh >/dev/null 2>&1 || {
     echo "clishe library is not installed"
     exit 1
   }

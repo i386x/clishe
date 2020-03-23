@@ -9,7 +9,7 @@
 
 ME := $(lastword $(MAKEFILE_LIST))
 HERE := $(dir $(abspath $(ME)))
-TOPDIR := $(HERE)/../..
+TOPDIR := $(HERE)../..
 
 include $(TOPDIR)/common.mk
 

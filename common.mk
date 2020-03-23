@@ -9,22 +9,24 @@
 
 NAME := clishe
 
-ECHO := echo
-CAT := cat
-TR := tr
-SED := sed
-CP := cp
-INSTALL := install
-MKDIR := mkdir
-RM := rm
-GZIP := gzip
-POD2HTML := pod2html
-POD2MAN := pod2man
-SHELLCHECK := shellcheck
-PODCHECKER := podchecker
+ECHO ?= echo
+CAT ?= cat
+TR ?= tr
+SED ?= sed
+CP ?= cp
+INSTALL ?= install
+MKDIR ?= mkdir
+RM ?= rm
+GZIP ?= gzip
+POD2HTML ?= pod2html
+POD2MAN ?= pod2man
+SHELLCHECK ?= shellcheck
+PODCHECKER ?= podchecker
 
-DESTDIR := $(PREFIX)/usr/share/$(NAME)
-DOCDIR := $(PREFIX)/usr/share/doc/$(NAME)
-MANDIR := $(PREFIX)/usr/share/man
+PREFIX ?= /usr/local
+
+DESTDIR := $(PREFIX)/share/$(NAME)
+DOCDIR := $(PREFIX)/share/doc/$(NAME)
+MANDIR := $(PREFIX)/share/man
 
 CLISHE_SH := $(NAME).sh

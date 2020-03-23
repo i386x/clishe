@@ -7,11 +7,7 @@
 # Brief:   Makefile for project maintenance.
 #
 
-ME := $(lastword $(MAKEFILE_LIST))
-HERE := $(dir $(abspath $(ME)))
-TOPDIR := $(HERE)
-
-include $(TOPDIR)/common.mk
+include ./common.mk
 
 .PHONY: all docs install clean check
 
@@ -20,7 +16,7 @@ all: check docs
 docs:
 	$(MAKE) -C docs docs
 
-install: all
+install:
 	$(MKDIR) -p $(DESTDIR)
 	$(MKDIR) -p $(DOCDIR)
 	$(INSTALL) -p -m 644 $(CLISHE_SH) $(DESTDIR)

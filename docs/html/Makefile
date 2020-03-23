@@ -9,8 +9,8 @@
 
 ME := $(lastword $(MAKEFILE_LIST))
 HERE := $(dir $(abspath $(ME)))
-TOPDIR := $(HERE)/../..
-PODDIR := $(HERE)/../pod
+TOPDIR := $(HERE)../..
+PODDIR := $(HERE)../pod
 
 include $(TOPDIR)/common.mk
 
@@ -20,7 +20,7 @@ POD2HTMLCSSDIR := pod2html.css
 
 HTMLPAGES :=
 
-CLISHE_SH_POD := $(CLISHE_SH).pod
+CLISHE_SH_POD := $(PODDIR)/$(CLISHE_SH).pod
 INDEX_HTML := index.html
 POD2HTML_CSS := $(CSSDIR)/pod2html.css
 HTMLPAGES += $(INDEX_HTML)
@@ -31,7 +31,7 @@ HTMLDEST := $(DOCDIR)/html
 
 docs: $(HTMLPAGES)
 
-install: $(HTMLPAGES)
+install:
 	$(MKDIR) -p $(HTMLDEST)
 	$(MKDIR) -p $(HTMLDEST)/$(CSSDIR)
 	$(INSTALL) -p -m 644 $(POD2HTML_CSS) $(HTMLDEST)/$(CSSDIR)
@@ -39,7 +39,7 @@ install: $(HTMLPAGES)
 
 clean:
 	$(RM) -f *.tmp
-	$(RM) -rfd $(STATIC)
+	$(RM) -rfd $(STATICDIR)
 	$(RM) -f $(HTMLPAGES)
 
 $(INDEX_HTML): $(POD2HTML_CSS)
