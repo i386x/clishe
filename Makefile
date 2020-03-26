@@ -30,6 +30,7 @@ install:
 	$(INSTALL) -p -m 644 LICENSE $(DOCDIR)
 	$(INSTALL) -p -m 644 README.md $(DOCDIR)
 	$(INSTALL) -p -m 644 VERSION $(DOCDIR)
+	$(INSTALL) -p -m 644 CHANGELOG $(DOCDIR)
 	$(MAKE) -C docs install
 	$(MAKE) -C samples install
 
