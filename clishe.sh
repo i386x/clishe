@@ -110,6 +110,10 @@ C<clishe_nopts> - a number of options processed by
 L<clishe_process_options|/clishe_process_options>. See
 L<clishe_process_options|/clishe_process_options>.
 
+C<clishe_tailopts> - a list of options that was on a tail of command line. See
+L<clishe_defopt|/clishe_defopt> and
+L<clishe_process_options|/clishe_process_options> for better explanation.
+
 =head1 FUNCTIONS
 
 =cut
@@ -136,12 +140,15 @@ function clishe_init() {
   declare -Ag __clishe_map_kvopt2storage
   declare -Ag __clishe_map_help2action
   declare -Ag __clishe_map_shortopt2longopt
-  declare -Ag __clishe_map_storage2longopt
+  declare -Ag __clishe_map_storage2optname
   declare -ag __clishe_list_required
+  declare -ag __clishe_list_headopts
+  declare -g __clishe_allow_tailopts=""
   declare -g clishe_helplines=""
   declare -g clishe_nopts=0
   declare -g __clishe_shortopts=""
   declare -g __clishe_nshift=1
+  declare -ag clishe_tailopts
 }
 
 : <<'=cut'
@@ -265,34 +272,34 @@ prints nothing to standard output.
 =cut
 
 function clishe_echo() {
-  local __echo_flags=""
-  local __echo_color="${CLISHE_COLOR:-}"
-  local __echo_reset=""
+  local _echo_flags=""
+  local _echo_color="${CLISHE_COLOR:-}"
+  local _echo_reset=""
 
   while [[ $# -gt 0 ]]; do
-    case "$1" in
+    case "${1}" in
       --red)
-        __echo_color='31'
+        _echo_color='31'
         shift
         ;;
       --green)
-        __echo_color='32'
+        _echo_color='32'
         shift
         ;;
       --blue)
-        __echo_color='34'
+        _echo_color='34'
         shift
         ;;
       --yellow)
-        __echo_color='33;1'
+        _echo_color='33;1'
         shift
         ;;
       --color)
-        __echo_color="${2:-}"
+        _echo_color="${2:-}"
         shift 2
         ;;
       -*)
-        __echo_flags="${__echo_flags}${1:1}"
+        _echo_flags="${_echo_flags}${1:1}"
         shift
         ;;
       *)
@@ -302,21 +309,21 @@ function clishe_echo() {
   done
 
   if [[ "${CLISHE_NOCOLOR:-}" ]]; then
-    __echo_color=""
+    _echo_color=""
   fi
 
-  if [[ "${__echo_flags}" ]]; then
-    __echo_flags="-${__echo_flags}"
+  if [[ "${_echo_flags}" ]]; then
+    _echo_flags="-${_echo_flags}"
   fi
-  if [[ "${__echo_color}" ]]; then
-    __echo_flags="${__echo_flags} -e"
-    __echo_color="\e[${__echo_color}m"
-    __echo_reset="\e[0m"
+  if [[ "${_echo_color}" ]]; then
+    _echo_flags="${_echo_flags} -e"
+    _echo_color="\e[${_echo_color}m"
+    _echo_reset="\e[0m"
   fi
 
   if [[ -z "${CLISHE_QUITE:-}" ]]; then
     # shellcheck disable=SC2086
-    echo ${__echo_flags} "${__echo_color}$*${__echo_reset}"
+    echo ${_echo_flags} "${_echo_color}$*${_echo_reset}"
   fi
 }
 
@@ -362,15 +369,15 @@ influenced by B<CLISHE_NOCOLOR> and B<CLISHE_QUITE> environment variables.
 =cut
 
 function clishe_error() {
-  local __exitcode=1
+  local _exitcode=1
 
-  if [[ "${1}" =~ ^[1-9][0-9]*$ ]]; then
-    __exitcode=${1}
+  if [[ "${1:-}" =~ ^[1-9][0-9]*$ ]]; then
+    _exitcode=${1}
     shift
   fi
   clishe_echo --red "${clishe_scriptname}: $*" >&2
   # shellcheck disable=SC2086
-  exit ${__exitcode}
+  exit ${_exitcode}
 }
 
 : <<'=cut'
@@ -387,6 +394,39 @@ Usage:
   clishe_defopt --key=STORAGE [-a [-b [...]]] -- HELP \
                 ( required | optional [DEFAULT] )
   clishe_defopt --flag [-a [-b [...]]] -- HELP ( STORAGE | help ACTION )
+  clishe_defopt STORAGE HELP
+  clishe_defopt @NAME HELP
+
+Above, there are four forms of how to use C<clishe_defopt>. The first form is a
+way of how to define key-value option. The second form is a way of how to
+define flag option.
+
+The third form provide a way of how to tell I<clishe> that there are positional
+options to be processed before key-value and flag options arrive. Thus
+
+  clishe_defopt USER "user name"
+  clishe_defopt EMAIL "user email"
+  clishe_defopt --help -h -- "print this screen and exit" help usage
+  ...
+
+tells to I<clishe> that the first command line option is should be stored to
+USER, the second one to EMAIL, and the following are processed as key-value
+options and flags (or as tail options, see the next paragraph). Note that the
+order of definitions is important. If we alter first and second definition, we
+must also alter first and second option on command line. Also note that
+positional options are mandatory, so if one of them is missing it is treated as
+error (this does not hold for I<help> options; in case that the help option is
+encountered, help action is performed even if command line options do not met
+the specification, except the situation when help option comes as a value of
+key-value option that consumes it).
+
+The last, fourth, form tells to I<clishe> that after the last key-value or flag
+option arrive zero to I<n> positional options, called I<tail options>. The
+sequence of tail options ends if command line ends or if C<--> was encountered.
+Tail options are optional, the start of tail options sequence is determined by
+the first option on command line that not start with dash (C<->). Anything
+between the first tail option and C<--> or end of command line is treated as a
+tail option. The processed tail options are stored to C<clishe_tailopts> array.
 
 =over
 
@@ -460,6 +500,13 @@ flag option has been set, use
 
   [[ ${STORAGE_VARIABLE:-0} -gt 0 ]]
 
+In case of
+
+  clishe_defopt STORAGE HELP
+
+form, STORAGE is a name of a variable to which a positional argument will be
+stored.
+
 =item help
 
 The keyword C<help> indicates that the flag option fires a function that print
@@ -470,11 +517,24 @@ a help screen.
 Applicable only with C<help>, the I<ACTION> is the name of function that is
 responsible for printing of help screen.
 
+=item @NAME
+
+C<@> serves for distinguishing between third form and fourth form of
+C<clishe_defopt>. I<NAME> is a string that is displayed on help screen, thus
+
+  clishe_defopt "@FILE1 FILE2 ..." "input files"
+
+will result in
+
+  FILE1 FILE2 ...
+      input files
+
 =back
 
 Following examples demonstrate how to define command line options. Consider an
 excerpt from a script C<script.sh>:
 
+  clishe_defopt VMNAME "virtual machine name"
   clishe_defopt --token=TOKEN -t -- "a security token" required
   clishe_defopt --port=PORT -p -- "port number" optional 8888
   clishe_defopt --email=EMAIL -- "email address" optional
@@ -482,11 +542,12 @@ excerpt from a script C<script.sh>:
   clishe_defopt --help -h -? -- "" help usage <<__HELP__
   print this screen and exit
   __HELP__
+  clishe_defopt @FILES "input files"
 
   function usage() {
     cat <<EOF
-  Usage: ${clishe_scriptname} [OPTIONS]
-  where OPTIONS are
+  Usage: ${clishe_scriptname} VMNAME [OPTIONS] [FILES...]
+  where options are
 
   ${clishe_helplines}
 
@@ -496,26 +557,47 @@ excerpt from a script C<script.sh>:
 
 If we run
 
-  $ ./script.sh -tfa1afe1 -port=7777 -vvv
+  $ ./script.sh myvm -tfa1afe1 -port=7777 -vvv
 
-then the value of C<TOKEN> will be C<fa1afe1>, the value of C<PORT> will be
-7777, the value of C<EMAIL> will be its default value which is the empty
-string, and the value of C<V> will be 3 because there are 3 occurences of I<v>
-option on command line.
+then the value of C<VMNAME> will be C<myvm>, the value of C<TOKEN> will be
+C<fa1afe1>, the value of C<PORT> will be 7777, the value of C<EMAIL> will be
+its default value which is the empty string, and the value of C<V> will be 3
+because there are 3 occurences of I<v> option on command line.
+
+If we run
+
+  $ ./script.sh myvm --token=fadeb1ade x.o y.o --help z.o
+
+then the value of C<VMNAME> will be C<myvm>, the value of C<TOKEN> will be
+C<fadeb1ade>, C<PORT> and C<EMAIL> will keep their default values, and
+C<clishe_tailopts> will contain C<x.o>, C<y.o>, C<--help> and C<z.o>. Observe
+that C<--help> in this case will not print help screen.
+
+If we run
+
+  $ ./script.sh vm1 vm2 --token=fadeb1ade --help x.o
+
+then we get an error about missing --I<token> option, because the C<vm1> is
+passed to C<VMNAME> and, since C<vm1> not starts with dash, the rest of options
+are treated as tail options.
 
 If we just run
 
-  $ ./script.sh -v
+  $ ./script.sh myvm -v
 
 we get an error about missing --I<token> option, because this option is marked
-as required.
+as required. If we omit C<myvm>, we get an error about missing positional
+option I<VMNAME>.
 
 Printing the help screen is done via C<usage> function. Notice that instead of
 --I<help>, options -I<h> and -I<?> can be also used to show the help:
 
   $ ./script.sh -?
-  Usage: script.sh [OPTIONS]
-  where OPTIONS are
+  Usage: script.sh VMNAME [OPTIONS] [FILES...]
+  where options are
+
+    VMNAME
+        virtual machine name
 
     --token=TOKEN, -t
         a security token
@@ -534,34 +616,51 @@ Printing the help screen is done via C<usage> function. Notice that instead of
     --help, -h, -?
         print this screen and exit
 
+    FILES
+        input files
+
 =cut
 
 function clishe_defopt() {
-  local __optname=""
-  local __storage=""
-  local __shorts=""
-  local __help=""
-  local __kvoptreq=""
-  local __default=""
-  local __help_action=""
+  if [[ "${1}" == -* ]]; then
+    __clishe_defopt12 "$@"
+  else
+    __clishe_defopt34 "$@"
+  fi
+}
+
+##
+# __clishe_defopt12 $@
+#
+#   $@ - see the 1st and the 2nd form of clishe_defopt
+#
+# Implementation of the 1st and the 2nd form of clishe_defopt.
+function __clishe_defopt12() {
+  local _optname=""
+  local _storage=""
+  local _shorts=""
+  local _help=""
+  local _kvoptreq=""
+  local _default=""
+  local _help_action=""
 
   # ---------------------------------------------------------------------------
   # -- Gather phase
 
   # Gather option name:
   if [[ "${1}" != --* ]]; then
-    clishe_error "${FUNCNAME[0]}: Option name must begin with --"
+    clishe_error "${FUNCNAME[1]}: Option name must begin with --"
   fi
-  __optname="${1#--}"
+  _optname="${1#--}"
   if [[ "${1}" == *=* ]]; then
-    __optname="${__optname%%=*}"
-    __storage="${1#*=}"
-    if [[ -z "${__storage}" ]]; then
-      clishe_error "${FUNCNAME[0]}: Expected a variable name after ="
+    _optname="${_optname%%=*}"
+    _storage="${1#*=}"
+    if [[ -z "${_storage}" ]]; then
+      clishe_error "${FUNCNAME[1]}: Expected a variable name after ="
     fi
   fi
-  if [[ -z "${__optname}" ]]; then
-    clishe_error "${FUNCNAME[0]}: Expected option name."
+  if [[ -z "${_optname}" ]]; then
+    clishe_error "${FUNCNAME[1]}: Expected option name."
   fi
 
   shift
@@ -574,10 +673,10 @@ function clishe_defopt() {
         break
         ;;
       -?)
-        __shorts="${__shorts}${__shorts:+ }${1#-}"
+        _shorts="${_shorts}${_shorts:+ }${1#-}"
         ;;
       *)
-        clishe_error "${FUNCNAME[0]}: Expected short option name or --"
+        clishe_error "${FUNCNAME[1]}: Expected short option name or --"
         ;;
     esac
     shift
@@ -586,47 +685,47 @@ function clishe_defopt() {
   # Gather help text:
   if [[ -z "${1:-}" ]]; then
     # "" indicates that help is on standard input:
-    __help=$(
+    _help=$(
       while read -r; do
         echo "${REPLY:+${CLISHE_HELP_INDENT2:-${__clishe_indent2}}}${REPLY}"
       done
     )
   else
-    __help="${CLISHE_HELP_INDENT2:-${__clishe_indent2}}${1}"
+    _help="${CLISHE_HELP_INDENT2:-${__clishe_indent2}}${1}"
   fi
 
   shift
 
   # Gather the rest:
-  if [[ "${__storage}" ]]; then
+  if [[ "${_storage}" ]]; then
     # Storage is defined, we are defining key-value option:
     case "${1:-}" in
       required|optional)
-        __kvoptreq="${1}"
+        _kvoptreq="${1}"
         ;;
       *)
-        clishe_error "${FUNCNAME[0]}: Missing an inforamtion whether" \
+        clishe_error "${FUNCNAME[1]}: Missing an inforamtion whether" \
           "key-value option is required or optional."
         ;;
     esac
     # Gather default key-value option value (not used if option is required):
-    __default="${2:-}"
+    _default="${2:-}"
   else
     # Storage is undefined yet, we are defining flag option:
     case "${1:-}" in
       # (help action | STORAGE )
       help)
         if [[ -z "${2:-}" ]]; then
-          clishe_error "${FUNCNAME[0]}: Missing a help action."
+          clishe_error "${FUNCNAME[1]}: Missing a help action."
         fi
-        __help_action="${2}"
+        _help_action="${2}"
         ;;
       ?*)
-        __storage="${1}"
+        _storage="${1}"
         ;;
       *)
         clishe_error \
-          "${FUNCNAME[0]}: Expected 'help' keyword or storage variable name."
+          "${FUNCNAME[1]}: Expected 'help' keyword or storage variable name."
         ;;
     esac
   fi
@@ -635,47 +734,47 @@ function clishe_defopt() {
   # -- Define phase
 
   # Check whether option was not defined before:
-  if [[ "${__clishe_map_flagopt2storage[${__optname}]:-}" ]] \
-  || [[ "${__clishe_map_kvopt2storage[${__optname}]:-}" ]] \
-  || [[ "${__clishe_map_help2action[${__optname}]:-}" ]]; then
-    clishe_error "${FUNCNAME[0]}: --${__optname} is still defined."
+  if [[ "${__clishe_map_flagopt2storage[${_optname}]:-}" ]] \
+  || [[ "${__clishe_map_kvopt2storage[${_optname}]:-}" ]] \
+  || [[ "${__clishe_map_help2action[${_optname}]:-}" ]]; then
+    clishe_error "${FUNCNAME[1]}: --${_optname} is still defined."
   fi
 
   # Check whether storage variable is not yet used:
-  if [[ "${__storage}" ]] \
-  && [[ "${__clishe_map_storage2longopt[${__storage}]:-}" ]]; then
+  if [[ "${_storage}" ]] \
+  && [[ "${__clishe_map_storage2optname[${_storage}]:-}" ]]; then
     clishe_error \
-      "${FUNCNAME[0]}: Storage variable ${__storage} was used before."
+      "${FUNCNAME[1]}: Storage variable ${_storage} was used before."
   fi
 
   # Check and setup short name aliases:
-  for __opt in ${__shorts}; do
-    if [[ "${__clishe_map_shortopt2longopt[${__opt}]:-}" ]]; then
-      clishe_error "${FUNCNAME[0]}: -${__opt} is still defined."
+  for _opt in ${_shorts}; do
+    if [[ "${__clishe_map_shortopt2longopt[${_opt}]:-}" ]]; then
+      clishe_error "${FUNCNAME[1]}: -${_opt} is still defined."
     fi
-    __clishe_map_shortopt2longopt["${__opt}"]="${__optname}"
+    __clishe_map_shortopt2longopt["${_opt}"]="${_optname}"
   done
 
   # Map option to its storage:
-  if [[ "${__kvoptreq}" ]]; then
+  if [[ "${_kvoptreq}" ]]; then
     # It is a key-value option:
-    __clishe_map_kvopt2storage["${__optname}"]="${__storage}"
+    __clishe_map_kvopt2storage["${_optname}"]="${_storage}"
     # If it is required, note it:
-    if [[ "${__kvoptreq}" == required ]]; then
-      __clishe_list_required+=( "${__storage}" )
+    if [[ "${_kvoptreq}" == required ]]; then
+      __clishe_list_required+=( "${_storage}" )
     fi
-  elif [[ "${__storage}" ]]; then
+  elif [[ "${_storage}" ]]; then
     # It is a flag option:
-    __clishe_map_flagopt2storage["${__optname}"]="${__storage}"
+    __clishe_map_flagopt2storage["${_optname}"]="${_storage}"
   else
     # It is a help:
-    __clishe_map_help2action["${__optname}"]="${__help_action}"
+    __clishe_map_help2action["${_optname}"]="${_help_action}"
   fi
 
   # Map storage to option and set its default:
-  if [[ "${__storage}" ]]; then
-    __clishe_map_storage2longopt["${__storage}"]="${__optname}"
-    clishe_setvar "${__storage}" "${__default}"
+  if [[ "${_storage}" ]]; then
+    __clishe_map_storage2optname["${_storage}"]="${_optname}"
+    clishe_setvar "${_storage}" "${_default}"
   fi
 
   # Assemble help lines:
@@ -684,18 +783,51 @@ function clishe_defopt() {
       echo "${clishe_helplines}"
       echo ""
     fi
-    echo -n "${CLISHE_HELP_INDENT1:-${__clishe_indent1}}--${__optname}"
-    if [[ "${__kvoptreq}" ]]; then
-      echo -n "=${__storage}"
+    echo -n "${CLISHE_HELP_INDENT1:-${__clishe_indent1}}--${_optname}"
+    if [[ "${_kvoptreq}" ]]; then
+      echo -n "=${_storage}"
     fi
-    for __opt in ${__shorts}; do
-      echo -n ", -${__opt}"
+    for _opt in ${_shorts}; do
+      echo -n ", -${_opt}"
     done
     echo ""
-    echo "${__help}"
-    if [[ "${__kvoptreq}" == optional ]]; then
+    echo "${_help}"
+    if [[ "${_kvoptreq}" == optional ]]; then
       echo -n "${CLISHE_HELP_INDENT2:-${__clishe_indent2}}"
-      echo "(default: \"${__default}\")"
+      echo "(default: \"${_default}\")"
+    fi
+  )
+}
+
+##
+# __clishe_defopt34 $@
+#
+#   $@ - see the 3rd and the 4th form of clishe_defopt
+#
+# Implementation of the 3rd and the 4th form of clishe_defopt.
+function __clishe_defopt34() {
+  if [[ "${1}" == @* ]]; then
+    __clishe_allow_tailopts="y"
+  else
+    if [[ "${__clishe_map_storage2optname[${1}]:-}" ]]; then
+      clishe_error "${FUNCNAME[1]}: Storage variable ${1} was used before."
+    fi
+    __clishe_map_storage2optname["${1}"]="${1}"
+    __clishe_list_headopts+=( "${1}" )
+  fi
+
+  clishe_helplines=$(
+    if [[ "${clishe_helplines}" ]]; then
+      echo "${clishe_helplines}"
+      echo ""
+    fi
+    echo "${CLISHE_HELP_INDENT1:-${__clishe_indent1}}${1#@}"
+    if [[ "${2:-}" ]]; then
+      echo "${CLISHE_HELP_INDENT2:-${__clishe_indent2}}${2}"
+    else
+      while read -r; do
+        echo "${REPLY:+${CLISHE_HELP_INDENT2:-${__clishe_indent2}}}${REPLY}"
+      done
     fi
   )
 }
@@ -711,6 +843,17 @@ C<clishe_nopts>.
 Usage:
 
   clishe_process_options [OPT1 [OPT2 [...]]]
+
+The general format of command line is
+
+  <positional opts> <key-value and flag opts> <tail opts> -- <the rest>
+
+I<positional opts> are specified with the third form of
+L<clishe_defopt|/clishe_defopt>, I<key-value and flag opts> are specified with
+the first and second form of L<clishe_defopt|/clishe_defopt> and I<tail opts>
+are specified with the fourth form of L<clishe_defopt|/clishe_defopt> and they
+are stored into C<clishe_tailopts> array. C<--> works as the options end
+marker, I<the rest> remains unprocessed.
 
 =over
 
@@ -740,6 +883,10 @@ of command line.
 function clishe_process_options() {
   clishe_nopts=0
 
+  __clishe_handle_headopts "$@"
+  clishe_nopts=$(( clishe_nopts + __clishe_nshift ))
+  shift ${__clishe_nshift}
+
   while [[ $# -gt 0 ]]; do
     __clishe_nshift=1
     case "${1}" in
@@ -758,6 +905,12 @@ function clishe_process_options() {
         done
         ;;
       *)
+        if [[ "${__clishe_allow_tailopts}" ]]; then
+          __clishe_handle_tailopts "$@"
+          clishe_nopts=$(( clishe_nopts + __clishe_nshift ))
+          shift ${__clishe_nshift}
+          break
+        fi
         clishe_error "Invalid option: ${1}"
         ;;
     esac
@@ -765,11 +918,56 @@ function clishe_process_options() {
     shift ${__clishe_nshift}
   done
 
-  for __varname in "${__clishe_list_required[@]}"; do
-    if [[ -z "${!__varname:-}" ]]; then
-      clishe_error \
-        "Option --${__clishe_map_storage2longopt[${__varname}]:-} is required."
+  for _varname in "${__clishe_list_headopts[@]}"; do
+    if [[ -z "${!_varname:-}" ]]; then
+      clishe_error "Positional option ${_varname} is missing or unset."
     fi
+  done
+
+  for _varname in "${__clishe_list_required[@]}"; do
+    if [[ -z "${!_varname:-}" ]]; then
+      clishe_error \
+        "Option --${__clishe_map_storage2optname[${_varname}]:-} is required."
+    fi
+  done
+}
+
+##
+# __clishe_handle_headopts $@
+#
+#   $@ - options to be processed
+#
+# Handle head positional options. In __clishe_nshift, return the number of
+# processed options.
+function __clishe_handle_headopts() {
+  __clishe_nshift=0
+  for _varname in "${__clishe_list_headopts[@]}"; do
+    if [[ -z "${1:-}" ]] || [[ "${1:-}" == -* ]]; then
+      break
+    fi
+    clishe_setvar "${_varname}" "${1}"
+    __clishe_nshift=$(( __clishe_nshift + 1 ))
+    shift
+  done
+}
+
+##
+# __clishe_handle_tailopts $@
+#
+#   $@ - options to be processed
+#
+# Handle tail positional options. In __clishe_nshift, return the number of
+# processed options.
+function __clishe_handle_tailopts() {
+  __clishe_nshift=0
+  while [[ $# -gt 0 ]]; do
+    if [[ "${1}" == "--" ]]; then
+      __clishe_nshift=$(( __clishe_nshift + 1 ))
+      break
+    fi
+    clishe_tailopts+=( "${1}" )
+    __clishe_nshift=$(( __clishe_nshift + 1 ))
+    shift
   done
 }
 
@@ -782,40 +980,40 @@ function clishe_process_options() {
 # the handled option was a key-value option and $1 was used. Modify
 # __clishe_shortopts so it contains the rest of unprocessed short options.
 function __clishe_handle_shortopt() {
-  local __opt=""
-  local __longopt=""
-  local __storage=""
-  local __action=""
+  local _opt=""
+  local _longopt=""
+  local _storage=""
+  local _action=""
 
-  __opt="${__clishe_shortopts:0:1}"
+  _opt="${__clishe_shortopts:0:1}"
   __clishe_shortopts="${__clishe_shortopts:1}"
-  __longopt="${__clishe_map_shortopt2longopt[${__opt}]:-}"
+  _longopt="${__clishe_map_shortopt2longopt[${_opt}]:-}"
 
-  if [[ -z "${__longopt}" ]]; then
-    clishe_error "Invalid option: -${__opt}"
+  if [[ -z "${_longopt}" ]]; then
+    clishe_error "Invalid option: -${_opt}"
   fi
 
-  __storage="${__clishe_map_kvopt2storage[${__longopt}]:-}"
-  if [[ "${__storage}" ]]; then
+  _storage="${__clishe_map_kvopt2storage[${_longopt}]:-}"
+  if [[ "${_storage}" ]]; then
     if [[ "${__clishe_shortopts}" ]]; then
-      clishe_setvar "${__storage}" "${__clishe_shortopts}"
+      clishe_setvar "${_storage}" "${__clishe_shortopts}"
       __clishe_shortopts=""
     elif [[ "${1}" ]]; then
-      clishe_setvar "${__storage}" "${1}"
+      clishe_setvar "${_storage}" "${1}"
       __clishe_nshift=2
     else
-      clishe_error "-${__opt}: Missing value."
+      clishe_error "-${_opt}: Missing value."
     fi
   else
-    __storage="${__clishe_map_flagopt2storage[${__longopt}]:-}"
-    if [[ -z "${__storage}" ]]; then
-      __action="${__clishe_map_help2action[${__longopt}]:-}"
-      if [[ -z "${__action}" ]]; then
-        clishe_error "Invalid option: -${__opt}"
+    _storage="${__clishe_map_flagopt2storage[${_longopt}]:-}"
+    if [[ -z "${_storage}" ]]; then
+      _action="${__clishe_map_help2action[${_longopt}]:-}"
+      if [[ -z "${_action}" ]]; then
+        clishe_error "Invalid option: -${_opt}"
       fi
-      ${__action}
+      ${_action}
     else
-      clishe_setvar "${__storage}" "$(( ${!__storage:-0} + 1 ))"
+      clishe_setvar "${_storage}" "$(( ${!_storage:-0} + 1 ))"
     fi
   fi
 }
@@ -828,40 +1026,40 @@ function __clishe_handle_shortopt() {
 #
 # Handle $1. If $2 was used, set __clishe_nshift to 2.
 function __clishe_handle_longopt() {
-  local __longopt=""
-  local __storage=""
-  local __value=""
-  local __action=""
+  local _longopt=""
+  local _storage=""
+  local _value=""
+  local _action=""
 
-  __longopt="${1#--}"
-  __longopt="${__longopt%%=*}"
-  __storage="${__clishe_map_kvopt2storage[${__longopt}]:-}"
+  _longopt="${1#--}"
+  _longopt="${_longopt%%=*}"
+  _storage="${__clishe_map_kvopt2storage[${_longopt}]:-}"
 
   if [[ "${1}" == *=* ]]; then
-    if [[ -z "${__storage}" ]]; then
-      clishe_error "--${__longopt} is not key-value option."
+    if [[ -z "${_storage}" ]]; then
+      clishe_error "--${_longopt} is not key-value option."
     fi
-    __value="${1#*=}"
-    if [[ -z "${__value}" ]]; then
-      clishe_error "--${__longopt}: Missing value."
+    _value="${1#*=}"
+    if [[ -z "${_value}" ]]; then
+      clishe_error "--${_longopt}: Missing value."
     fi
-    clishe_setvar "${__storage}" "${__value}"
-  elif [[ "${__storage}" ]]; then
+    clishe_setvar "${_storage}" "${_value}"
+  elif [[ "${_storage}" ]]; then
     if [[ -z "${2}" ]]; then
-      clishe_error "--${__longopt}: Missing value."
+      clishe_error "--${_longopt}: Missing value."
     fi
-    clishe_setvar "${__storage}" "${2}"
+    clishe_setvar "${_storage}" "${2}"
     __clishe_nshift=2
   else
-    __storage="${__clishe_map_flagopt2storage[${__longopt}]:-}"
-    if [[ -z "${__storage}" ]]; then
-      __action="${__clishe_map_help2action[${__longopt}]:-}"
-      if [[ -z "${__action}" ]]; then
-        clishe_error "Invalid option: --${__longopt}"
+    _storage="${__clishe_map_flagopt2storage[${_longopt}]:-}"
+    if [[ -z "${_storage}" ]]; then
+      _action="${__clishe_map_help2action[${_longopt}]:-}"
+      if [[ -z "${_action}" ]]; then
+        clishe_error "Invalid option: --${_longopt}"
       fi
-      ${__action}
+      ${_action}
     else
-      clishe_setvar "${__storage}" "$(( ${!__storage:-0} + 1 ))"
+      clishe_setvar "${_storage}" "$(( ${!_storage:-0} + 1 ))"
     fi
   fi
 }
@@ -871,7 +1069,7 @@ function __clishe_handle_longopt() {
 
 =head1 EXAMPLES
 
-The following Bash script print information about its argumetns:
+The following Bash script prints information about its argumetns:
 
   #!/bin/bash
 
@@ -888,6 +1086,8 @@ The following Bash script print information about its argumetns:
 
   clishe_init
 
+  clishe_defopt ARG1 "positional argument #1"
+  clishe_defopt ARG2 "positional argument #2"
   clishe_defopt --token=TOKEN -t -- "security token" required
   clishe_defopt --user=USER -u -- "" optional "Jane Doe <jd@compant.com>" <<EOF
   a user name and email; please, keep the following format
@@ -899,13 +1099,14 @@ The following Bash script print information about its argumetns:
   clishe_defopt --prefix=PREFIX -- "prefix" optional
   clishe_defopt --verbose -v -- "verbocity level" V
   clishe_defopt --help -h -? -- "print this screen and exit" help usage
+  clishe_defopt "@FILE1 FILE2 ..." "input files"
 
   function usage() {
     cat <<-EOF
   	Show options (a clishe demo).
 
-  	Usage: ${clishe_scriptname} OPTIONS
-  	where OPTIONS are
+  	Usage: ${clishe_scriptname} ARG1 ARG2 [OPTIONS] [FILE1 [FILE2 [...]]]
+  	where options are
 
   	${clishe_helplines}
 
@@ -918,10 +1119,13 @@ The following Bash script print information about its argumetns:
   clishe_process_options "$@"
   shift ${clishe_nopts}
 
+  clishe_echo --blue "ARG1: '${ARG1:-}'"
+  clishe_echo --blue "ARG2: '${ARG2:-}'"
   clishe_echo --blue "TOKEN: '${TOKEN:-}'"
   clishe_echo --blue "USER: '${USER:-}'"
   clishe_echo --blue "PREFIX: '${PREFIX:-}'"
   clishe_echo --blue "V: ${V:-0}"
+  clishe_echo --blue "Files: ${clishe_tailopts[@]}"
   clishe_echo --blue "Processed options: ${clishe_nopts}"
   clishe_echo --blue "Rest of options: $*"
 
