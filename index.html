@@ -127,6 +127,8 @@
 
 <p><code>clishe_nopts</code> - a number of options processed by <a href="#clishe_process_options">clishe_process_options</a>. See <a href="#clishe_process_options">clishe_process_options</a>.</p>
 
+<p><code>clishe_tailopts</code> - a list of options that was on a tail of command line. See <a href="#clishe_defopt">clishe_defopt</a> and <a href="#clishe_process_options">clishe_process_options</a> for better explanation.</p>
+
 <h1 id="FUNCTIONS">FUNCTIONS</h1>
 
 <h2 id="Initialization">Initialization</h2>
@@ -298,7 +300,22 @@
 
 <pre><code>  clishe_defopt --key=STORAGE [-a [-b [...]]] -- HELP \
                 ( required | optional [DEFAULT] )
-  clishe_defopt --flag [-a [-b [...]]] -- HELP ( STORAGE | help ACTION )</code></pre>
+  clishe_defopt --flag [-a [-b [...]]] -- HELP ( STORAGE | help ACTION )
+  clishe_defopt STORAGE HELP
+  clishe_defopt @NAME HELP</code></pre>
+
+<p>Above, there are four forms of how to use <code>clishe_defopt</code>. The first form is a way of how to define key-value option. The second form is a way of how to define flag option.</p>
+
+<p>The third form provide a way of how to tell <i>clishe</i> that there are positional options to be processed before key-value and flag options arrive. Thus</p>
+
+<pre><code>  clishe_defopt USER &quot;user name&quot;
+  clishe_defopt EMAIL &quot;user email&quot;
+  clishe_defopt --help -h -- &quot;print this screen and exit&quot; help usage
+  ...</code></pre>
+
+<p>tells to <i>clishe</i> that the first command line option is should be stored to USER, the second one to EMAIL, and the following are processed as key-value options and flags (or as tail options, see the next paragraph). Note that the order of definitions is important. If we alter first and second definition, we must also alter first and second option on command line. Also note that positional options are mandatory, so if one of them is missing it is treated as error (this does not hold for <i>help</i> options; in case that the help option is encountered, help action is performed even if command line options do not met the specification, except the situation when help option comes as a value of key-value option that consumes it).</p>
+
+<p>The last, fourth, form tells to <i>clishe</i> that after the last key-value or flag option arrive zero to <i>n</i> positional options, called <i>tail options</i>. The sequence of tail options ends if command line ends or if <code>--</code> was encountered. Tail options are optional, the start of tail options sequence is determined by the first option on command line that not start with dash (<code>-</code>). Anything between the first tail option and <code>--</code> or end of command line is treated as a tail option. The processed tail options are stored to <code>clishe_tailopts</code> array.</p>
 
 <dl>
 
@@ -361,6 +378,12 @@
 
 <pre><code>  [[ ${STORAGE_VARIABLE:-0} -gt 0 ]]</code></pre>
 
+<p>In case of</p>
+
+<pre><code>  clishe_defopt STORAGE HELP</code></pre>
+
+<p>form, STORAGE is a name of a variable to which a positional argument will be stored.</p>
+
 </dd>
 <dt id="help">help</dt>
 <dd>
@@ -374,22 +397,37 @@
 <p>Applicable only with <code>help</code>, the <i>ACTION</i> is the name of function that is responsible for printing of help screen.</p>
 
 </dd>
+<dt id="NAME1">@NAME</dt>
+<dd>
+
+<p><code>@</code> serves for distinguishing between third form and fourth form of <code>clishe_defopt</code>. <i>NAME</i> is a string that is displayed on help screen, thus</p>
+
+<pre><code>  clishe_defopt &quot;@FILE1 FILE2 ...&quot; &quot;input files&quot;</code></pre>
+
+<p>will result in</p>
+
+<pre><code>  FILE1 FILE2 ...
+      input files</code></pre>
+
+</dd>
 </dl>
 
 <p>Following examples demonstrate how to define command line options. Consider an excerpt from a script <code>script.sh</code>:</p>
 
-<pre><code>  clishe_defopt --token=TOKEN -t -- &quot;a security token&quot; required
+<pre><code>  clishe_defopt VMNAME &quot;virtual machine name&quot;
+  clishe_defopt --token=TOKEN -t -- &quot;a security token&quot; required
   clishe_defopt --port=PORT -p -- &quot;port number&quot; optional 8888
   clishe_defopt --email=EMAIL -- &quot;email address&quot; optional
   clishe_defopt --verbose -v -- &quot;verbosity level&quot; V
   clishe_defopt --help -h -? -- &quot;&quot; help usage &lt;&lt;__HELP__
   print this screen and exit
   __HELP__
+  clishe_defopt @FILES &quot;input files&quot;
 
   function usage() {
     cat &lt;&lt;EOF
-  Usage: ${clishe_scriptname} [OPTIONS]
-  where OPTIONS are
+  Usage: ${clishe_scriptname} VMNAME [OPTIONS] [FILES...]
+  where options are
 
   ${clishe_helplines}
 
@@ -399,21 +437,36 @@
 
 <p>If we run</p>
 
-<pre><code>  $ ./script.sh -tfa1afe1 -port=7777 -vvv</code></pre>
+<pre><code>  $ ./script.sh myvm -tfa1afe1 -port=7777 -vvv</code></pre>
 
-<p>then the value of <code>TOKEN</code> will be <code>fa1afe1</code>, the value of <code>PORT</code> will be 7777, the value of <code>EMAIL</code> will be its default value which is the empty string, and the value of <code>V</code> will be 3 because there are 3 occurences of <i>v</i> option on command line.</p>
+<p>then the value of <code>VMNAME</code> will be <code>myvm</code>, the value of <code>TOKEN</code> will be <code>fa1afe1</code>, the value of <code>PORT</code> will be 7777, the value of <code>EMAIL</code> will be its default value which is the empty string, and the value of <code>V</code> will be 3 because there are 3 occurences of <i>v</i> option on command line.</p>
+
+<p>If we run</p>
+
+<pre><code>  $ ./script.sh myvm --token=fadeb1ade x.o y.o --help z.o</code></pre>
+
+<p>then the value of <code>VMNAME</code> will be <code>myvm</code>, the value of <code>TOKEN</code> will be <code>fadeb1ade</code>, <code>PORT</code> and <code>EMAIL</code> will keep their default values, and <code>clishe_tailopts</code> will contain <code>x.o</code>, <code>y.o</code>, <code>--help</code> and <code>z.o</code>. Observe that <code>--help</code> in this case will not print help screen.</p>
+
+<p>If we run</p>
+
+<pre><code>  $ ./script.sh vm1 vm2 --token=fadeb1ade --help x.o</code></pre>
+
+<p>then we get an error about missing --<i>token</i> option, because the <code>vm1</code> is passed to <code>VMNAME</code> and, since <code>vm1</code> not starts with dash, the rest of options are treated as tail options.</p>
 
 <p>If we just run</p>
 
-<pre><code>  $ ./script.sh -v</code></pre>
+<pre><code>  $ ./script.sh myvm -v</code></pre>
 
-<p>we get an error about missing --<i>token</i> option, because this option is marked as required.</p>
+<p>we get an error about missing --<i>token</i> option, because this option is marked as required. If we omit <code>myvm</code>, we get an error about missing positional option <i>VMNAME</i>.</p>
 
 <p>Printing the help screen is done via <code>usage</code> function. Notice that instead of --<i>help</i>, options -<i>h</i> and -<i>?</i> can be also used to show the help:</p>
 
 <pre><code>  $ ./script.sh -?
-  Usage: script.sh [OPTIONS]
-  where OPTIONS are
+  Usage: script.sh VMNAME [OPTIONS] [FILES...]
+  where options are
+
+    VMNAME
+        virtual machine name
 
     --token=TOKEN, -t
         a security token
@@ -430,7 +483,10 @@
         verbosity level
 
     --help, -h, -?
-        print this screen and exit</code></pre>
+        print this screen and exit
+
+    FILES
+        input files</code></pre>
 
 <h3 id="clishe_process_options">clishe_process_options</h3>
 
@@ -439,6 +495,12 @@
 <p>Usage:</p>
 
 <pre><code>  clishe_process_options [OPT1 [OPT2 [...]]]</code></pre>
+
+<p>The general format of command line is</p>
+
+<pre><code>  &lt;positional opts&gt; &lt;key-value and flag opts&gt; &lt;tail opts&gt; -- &lt;the rest&gt;</code></pre>
+
+<p><i>positional opts</i> are specified with the third form of <a href="#clishe_defopt">clishe_defopt</a>, <i>key-value and flag opts</i> are specified with the first and second form of <a href="#clishe_defopt">clishe_defopt</a> and <i>tail opts</i> are specified with the fourth form of <a href="#clishe_defopt">clishe_defopt</a> and they are stored into <code>clishe_tailopts</code> array. <code>--</code> works as the options end marker, <i>the rest</i> remains unprocessed.</p>
 
 <dl>
 
@@ -462,7 +524,7 @@
 
 <h1 id="EXAMPLES">EXAMPLES</h1>
 
-<p>The following Bash script print information about its argumetns:</p>
+<p>The following Bash script prints information about its argumetns:</p>
 
 <pre><code>  #!/bin/bash
 
@@ -479,6 +541,8 @@
 
   clishe_init
 
+  clishe_defopt ARG1 &quot;positional argument #1&quot;
+  clishe_defopt ARG2 &quot;positional argument #2&quot;
   clishe_defopt --token=TOKEN -t -- &quot;security token&quot; required
   clishe_defopt --user=USER -u -- &quot;&quot; optional &quot;Jane Doe &lt;jd@compant.com&gt;&quot; &lt;&lt;EOF
   a user name and email; please, keep the following format
@@ -490,13 +554,14 @@
   clishe_defopt --prefix=PREFIX -- &quot;prefix&quot; optional
   clishe_defopt --verbose -v -- &quot;verbocity level&quot; V
   clishe_defopt --help -h -? -- &quot;print this screen and exit&quot; help usage
+  clishe_defopt &quot;@FILE1 FILE2 ...&quot; &quot;input files&quot;
 
   function usage() {
     cat &lt;&lt;-EOF
         Show options (a clishe demo).
 
-        Usage: ${clishe_scriptname} OPTIONS
-        where OPTIONS are
+        Usage: ${clishe_scriptname} ARG1 ARG2 [OPTIONS] [FILE1 [FILE2 [...]]]
+        where options are
 
         ${clishe_helplines}
 
@@ -509,10 +574,13 @@
   clishe_process_options &quot;$@&quot;
   shift ${clishe_nopts}
 
+  clishe_echo --blue &quot;ARG1: &#39;${ARG1:-}&#39;&quot;
+  clishe_echo --blue &quot;ARG2: &#39;${ARG2:-}&#39;&quot;
   clishe_echo --blue &quot;TOKEN: &#39;${TOKEN:-}&#39;&quot;
   clishe_echo --blue &quot;USER: &#39;${USER:-}&#39;&quot;
   clishe_echo --blue &quot;PREFIX: &#39;${PREFIX:-}&#39;&quot;
   clishe_echo --blue &quot;V: ${V:-0}&quot;
+  clishe_echo --blue &quot;Files: ${clishe_tailopts[@]}&quot;
   clishe_echo --blue &quot;Processed options: ${clishe_nopts}&quot;
   clishe_echo --blue &quot;Rest of options: $*&quot;</code></pre>
 
@@ -529,7 +597,7 @@
 
 <ul>
 
-<li><p>0.01</p>
+<li><p>0.02</p>
 
 </li>
 </ul>
@@ -548,7 +616,7 @@
 <p>If you found a bug, please <a href="https://github.com/i386x/clishe/issues">open an issue</a>.</p>
 
 <div class="footer">
-  &copy; 2020 Jiří Kučera | v0.01
+  &copy; 2020 Jiří Kučera | v0.02
 </div>
 
 
