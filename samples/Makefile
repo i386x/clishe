@@ -15,7 +15,7 @@ include $(TOPDIR)/common.mk
 
 SAMPLESDIR := $(DOCDIR)/samples
 
-SAMPLES := showopts.sh
+SAMPLES := echodemo.sh showopts.sh
 
 .PHONY: install check
 
