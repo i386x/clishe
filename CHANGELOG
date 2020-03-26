@@ -1,3 +1,9 @@
 2020-03-23  Jiri Kucera  <sanczes@gmail.com>
 
+    * Release clishe-0.02
+      - support positional options
+      - add samples/echodemo.sh
+
+2020-03-23  Jiri Kucera  <sanczes@gmail.com>
+
     * Release clishe-0.01
